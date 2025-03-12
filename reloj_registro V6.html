@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reloj en Vivo</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        #clock {
+            font-size: 400%;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h1>Reloj en Vivo</h1>
+    <div id="clock">Cargando...</div>
+    <button onclick="recordTime()">Grabar Registro</button>
+    <button onclick="saveReferences()">Guardar Referencias</button>
+    <button onclick="exportToExcel()">Exportar a Excel</button>
+    <table id="timeTable">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Hora Registrada</th>
+                <th>Referencia</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+    <script>
+        let useAPITime = true;
+        async function fetchTime() {
+            try {
+                let response = await fetch('http://worldtimeapi.org/api/timezone/America/Bogota');
+                let data = await response.json();
+                let date = new Date(data.utc_datetime);
+                return date;
+            } catch (error) {
+                console.log("No se pudo obtener la hora de Internet, usando la del dispositivo.");
+                return new Date();
+            }
+        }
+        async function updateClock() {
+            let now = useAPITime ? await fetchTime() : new Date();
+            document.getElementById('clock').innerText = now.toLocaleTimeString('es-CO', { hour12: false }) + "." + now.getMilliseconds();
+        }
+        setInterval(updateClock, 1);
+        let count = 1;
+        function recordTime() {
+            let now = document.getElementById('clock').innerText;
+            let table = document.getElementById('timeTable').getElementsByTagName('tbody')[0];
+            let newRow = table.insertRow();
+            newRow.insertCell(0).innerText = count++;
+            newRow.insertCell(1).innerText = now;
+            let referenceCell = newRow.insertCell(2);
+            let input = document.createElement("input");
+            input.type = "text";
+            referenceCell.appendChild(input);
+            input.focus();
+        }
+        function saveReferences() {
+            let rows = document.querySelectorAll("#timeTable tbody tr");
+            rows.forEach(row => {
+                let input = row.cells[2].querySelector("input");
+                if (input) {
+                    row.cells[2].innerText = input.value;
+                }
+            });
+        }
+        function exportToExcel() {
+            saveReferences();
+            let table = document.getElementById("timeTable");
+            let wb = XLSX.utils.table_to_book(table, { sheet: "Registros" });
+            XLSX.writeFile(wb, "Registros_Horarios.xlsx");
+        }
+        window.addEventListener("beforeunload", function (event) {
+            event.preventDefault();
+            event.returnValue = "¿Estás seguro de que deseas salir?";
+        });
+    </script>
+</body>
+</html>
